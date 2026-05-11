@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useUrlParams } from "./hooks/useUrlParams";
 import { UrlForm } from "./components/UrlForm";
@@ -22,7 +22,9 @@ export function App() {
 
     const incoming: Listing[] = [];
     for (const r of results) {
-      incoming.push(...r.listings);
+      for (const l of r.listings) {
+        incoming.push({ ...l, sourceUrl: r.sourceUrl });
+      }
     }
 
     const freshUrls = new Set<string>();
@@ -42,7 +44,8 @@ export function App() {
     }
 
     const sorted = Array.from(merged.values()).sort(
-      (a, b) => new Date(b.listingTime).getTime() - new Date(a.listingTime).getTime()
+      (a, b) =>
+        new Date(b.listingTime).getTime() - new Date(a.listingTime).getTime(),
     );
     setAllListings(sorted);
     setNewUrls(freshUrls);
@@ -62,25 +65,48 @@ export function App() {
     return () => clearInterval(timer);
   }, [connected, urls, scrape]);
 
+  const [compact, setCompact] = useState(false);
+
   return (
     <div className="app">
       <header>
-        <h1>HuutoScraper</h1>
+        {!compact && <h1>HuutoScraper</h1>}
         <span className={`conn-status ${connected ? "online" : "offline"}`}>
-          {scraping ? "Scraping..." : connected ? "Connected" : "Reconnecting..."}
+          {scraping
+            ? "Scraping..."
+            : connected
+              ? "Connected"
+              : "Reconnecting..."}
         </span>
+        <button className="compact-toggle" onClick={() => setCompact((c) => !c)}>
+          {compact ? "Expand" : "Compact"}
+        </button>
       </header>
 
-      <section className="controls">
-        <UrlForm onAdd={addUrl} />
-        <JobList urls={urls} onRemove={removeUrl} />
-      </section>
+      {!compact && (
+        <section className="controls">
+          <UrlForm onAdd={addUrl} />
+          <JobList urls={urls} onRemove={removeUrl} />
+        </section>
+      )}
 
       {error && <div className="error-banner">{error}</div>}
 
       <section className="listings">
-        <h2>Listings ({allListings.length})</h2>
-        <ListingTable listings={allListings} newUrls={newUrls} />
+        {urls.map((sourceUrl) => {
+          const group = allListings.filter((l) => l.sourceUrl === sourceUrl);
+          return (
+            <div key={sourceUrl} className="listing-group">
+              <h2>
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                  {new URL(sourceUrl).hostname}
+                </a>
+                <span className="listing-count">{group.length}</span>
+              </h2>
+              <ListingTable listings={group} newUrls={newUrls} />
+            </div>
+          );
+        })}
       </section>
     </div>
   );

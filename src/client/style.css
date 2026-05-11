@@ -5,7 +5,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #0f1117;
   color: #e1e4e8;
   min-height: 100vh;
@@ -29,6 +30,21 @@ header {
 header h1 {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.compact-toggle {
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  color: #8b949e;
+  border: 1px solid #2d333b;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.compact-toggle:hover {
+  color: #e1e4e8;
+  border-color: #8b949e;
 }
 
 .conn-status {
@@ -143,10 +159,41 @@ header h1 {
   margin-bottom: 1rem;
 }
 
-.listings h2 {
-  font-size: 1.1rem;
+.listings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.listing-group {
+  flex: 1 1 250px;
+  min-width: 250px;
+  overflow: hidden;
+}
+
+.listing-group h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
   margin-bottom: 0.75rem;
   font-weight: 500;
+}
+
+.listing-group h2 a {
+  color: #e1e4e8;
+  text-decoration: none;
+}
+
+.listing-group h2 a:hover {
+  text-decoration: underline;
+}
+
+.listing-count {
+  font-size: 0.8rem;
+  color: #8b949e;
+  font-weight: 400;
 }
 
 .listing-table-wrap {

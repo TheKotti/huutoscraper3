@@ -3,6 +3,7 @@ export interface Listing {
   url: string;
   price: string;
   listingTime: string;
+  sourceUrl: string;
 }
 
 export interface ScrapeResult {
