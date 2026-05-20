@@ -2,7 +2,56 @@
 
 The app runs as a single Docker container on an AWS Lightsail instance, behind Caddy for SSL.
 
-## Updating the app (quick reference)
+Deployment is automated via GitHub Actions: every push to `main` builds a fresh
+image, pushes it to GitHub Container Registry (GHCR), and tells the Lightsail
+instance to pull and restart. The manual flow below is kept as a fallback.
+
+## Automated deployment (GitHub Actions)
+
+The workflow lives at `.github/workflows/deploy.yml`. It runs on every push to
+`main` and can also be triggered manually from the Actions tab
+(`workflow_dispatch`).
+
+### Required GitHub secrets
+
+Set these under **Settings → Secrets and variables → Actions**:
+
+| Secret | What it is |
+|--------|------------|
+| `LIGHTSAIL_HOST` | Public IP or DNS of the Lightsail instance |
+| `LIGHTSAIL_USER` | SSH user (e.g. `ubuntu`) |
+| `LIGHTSAIL_SSH_KEY` | Private SSH key with access to the instance (the full PEM, including BEGIN/END lines) |
+| `GHCR_PULL_USER` | GitHub username that owns the pull token |
+| `GHCR_PULL_TOKEN` | Personal access token with `read:packages` scope, used by the server to pull from GHCR |
+
+The image is pushed using the workflow's built-in `GITHUB_TOKEN` (no secret
+needed for that side). The server-side pull uses a separate PAT because
+`GITHUB_TOKEN` only exists inside the workflow run.
+
+### One-time server setup for the automated flow
+
+On the Lightsail instance, make sure the SSH user can run docker without sudo
+(see "Install Docker" below — `usermod -aG docker ubuntu` covers this) and that
+the GHCR PAT can be used to pull the image:
+
+```bash
+echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USER" --password-stdin
+```
+
+The workflow re-runs `docker login` on every deploy, so this is only needed to
+verify connectivity once.
+
+### What the workflow does
+
+1. **build** job — builds the Docker image with Buildx (using GHA cache) and
+   pushes it to `ghcr.io/<owner>/<repo>` tagged with both the commit SHA and
+   `latest`.
+2. **deploy** job — SSHes into the Lightsail instance, runs `docker pull` on
+   `:latest`, then stops/removes/runs the container with the same flags as the
+   manual deploy (`--restart unless-stopped`, `--shm-size=256m`, port
+   `3002:3000`). Old images are pruned at the end.
+
+## Manual deployment (fallback)
 
 On your local machine:
 
