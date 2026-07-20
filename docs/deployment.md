@@ -2,14 +2,14 @@
 
 The app runs as a single Docker container on an AWS Lightsail instance, behind Caddy for SSL.
 
-Deployment is automated via GitHub Actions: every push to `main` builds a fresh
+Deployment is automated via GitHub Actions: every push to `master` builds a fresh
 image, pushes it to GitHub Container Registry (GHCR), and tells the Lightsail
 instance to pull and restart. The manual flow below is kept as a fallback.
 
 ## Automated deployment (GitHub Actions)
 
 The workflow lives at `.github/workflows/deploy.yml`. It runs on every push to
-`main` and can also be triggered manually from the Actions tab
+`master` and can also be triggered manually from the Actions tab
 (`workflow_dispatch`).
 
 ### Required GitHub secrets
