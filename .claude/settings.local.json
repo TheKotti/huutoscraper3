@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "PowerShell(npm init -y)",
-      "mcp__Claude_in_Chrome__tabs_context_mcp"
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(npx tsx *)"
     ]
   }
 }
