@@ -215,6 +215,25 @@ header h1 {
   font-weight: 400;
 }
 
+.target-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-bottom: 0.5rem;
+}
+
+.target-status.failing {
+  color: #d29922;
+}
+
+.target-status-error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .listing-table-wrap {
   overflow-x: auto;
 }

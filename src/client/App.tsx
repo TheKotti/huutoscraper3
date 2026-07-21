@@ -5,6 +5,7 @@ import { UrlForm } from "./components/UrlForm";
 import { JobList } from "./components/JobList";
 import { KeywordInput } from "./components/KeywordInput";
 import { ListingTable } from "./components/ListingTable";
+import { TargetStatusLine } from "./components/TargetStatusLine";
 import type { Listing } from "./types";
 
 // huuto.net doesn't publish listing times, so its parser stamps every listing
@@ -116,6 +117,7 @@ export function App() {
       <section className="listings">
         {urls.map((sourceUrl) => {
           const group = allListings.filter((l) => l.sourceUrl === sourceUrl);
+          const status = results.find((r) => r.sourceUrl === sourceUrl);
           return (
             <div key={sourceUrl} className="listing-group">
               <h2>
@@ -124,6 +126,7 @@ export function App() {
                 </a>
                 <span className="listing-count">{group.length}</span>
               </h2>
+              <TargetStatusLine status={status} />
               <ListingTable
                 listings={group}
                 newUrls={newUrls}

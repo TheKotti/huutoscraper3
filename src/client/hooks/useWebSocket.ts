@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { ClientMessage, ServerMessage, Listing, ScrapeResult } from "../types";
+import type { ClientMessage, ServerMessage, TargetStatus } from "../types";
 
 export interface WsState {
   connected: boolean;
   scraping: boolean;
-  results: ScrapeResult[];
+  results: TargetStatus[];
   error: string | null;
 }
 

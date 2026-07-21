@@ -14,10 +14,14 @@ export const huutoParser: SiteParser = {
 
     try {
       await page.waitForSelector("a[href*='/kohteet/']", { timeout: 15000 });
-    } catch {
+    } catch (err) {
+      // A selector timeout is indistinguishable from "genuinely zero results"
+      // without inspecting the page, but a search that always has matches going
+      // quiet is far more likely to mean the DOM changed or Cloudflare stepped
+      // in — so this is treated as a failure rather than a silent empty result.
       const snippet = await page.evaluate(() => document.body.innerText.slice(0, 1000));
       console.log("[huuto] No listing links found. Page snippet:", snippet);
-      return [];
+      throw err;
     }
 
     const now = new Date().toISOString();

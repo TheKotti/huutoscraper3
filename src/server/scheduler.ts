@@ -1,6 +1,12 @@
 import type { WebSocket } from "ws";
-import type { ScrapeResult, ServerMessage } from "./types.js";
-import { scrapeUrls } from "./scraper.js";
+import type { TargetStatus, ServerMessage } from "./types.js";
+import {
+  scrapeUrls,
+  URL_BUDGET_MS,
+  PAGE_SETUP_BUDGET_MS,
+} from "./scraper.js";
+import { forceRestart } from "./browser.js";
+import { withTimeout } from "./timeout.js";
 
 const SCRAPE_INTERVAL_MS = 60_000;
 
@@ -9,13 +15,22 @@ const SCRAPE_INTERVAL_MS = 60_000;
 // those sets exactly once and fans the results back out. Two browser tabs
 // watching the same URL therefore cost the same as one.
 const subscriptions = new Map<WebSocket, string[]>();
-const cache = new Map<string, ScrapeResult>();
+const targets = new Map<string, TargetStatus>();
 
 let timer: NodeJS.Timeout | null = null;
 let running = false;
 // A cycle was requested while one was already in flight — run once more when
 // the current one finishes. Bounded to a single rerun so requests can't stack.
 let rerunRequested = false;
+
+/**
+ * Ceiling for a whole cycle. The per-target budget in the scraper covers a slow
+ * site; this covers the CDP calls it cannot bound (newPage, evaluate, close),
+ * which hang indefinitely when Chrome is alive but unresponsive.
+ */
+function cycleBudget(urlCount: number): number {
+  return PAGE_SETUP_BUDGET_MS + urlCount * (URL_BUDGET_MS + 5_000);
+}
 
 function send(ws: WebSocket, msg: ServerMessage): void {
   if (ws.readyState === ws.OPEN) {
@@ -31,15 +46,48 @@ function activeUrls(): string[] {
   return Array.from(set);
 }
 
+function targetFor(url: string): TargetStatus {
+  let target = targets.get(url);
+  if (!target) {
+    target = {
+      sourceUrl: url,
+      listings: [],
+      lastSuccessAt: null,
+      lastFailureAt: null,
+      lastError: null,
+    };
+    targets.set(url, target);
+  }
+  return target;
+}
+
+function recordSuccess(url: string, listings: TargetStatus["listings"]): void {
+  const target = targetFor(url);
+  target.listings = listings;
+  target.lastSuccessAt = new Date().toISOString();
+}
+
+// Listings are deliberately left untouched: a target that breaks should keep
+// showing its last known good data rather than emptying out.
+function recordFailure(url: string, message: string): void {
+  const target = targetFor(url);
+  target.lastFailureAt = new Date().toISOString();
+  target.lastError = message;
+}
+
 /** Send a client whatever we already hold for the URLs it subscribed to. */
 function deliver(ws: WebSocket, urls: string[]): void {
   const results = urls
-    .map((url) => cache.get(url))
-    .filter((r): r is ScrapeResult => r !== undefined);
+    .map((url) => targets.get(url))
+    .filter((t): t is TargetStatus => t !== undefined);
 
   if (results.length > 0) {
     send(ws, { type: "scrape_result", results });
   }
+}
+
+function deliverAll(): void {
+  for (const [ws, subscribed] of subscriptions) deliver(ws, subscribed);
 }
 
 function broadcast(msg: ServerMessage): void {
@@ -63,17 +111,34 @@ async function runCycle(): Promise<void> {
   broadcast({ type: "scrape_start" });
 
   try {
-    const results = await scrapeUrls(urls);
-    for (const result of results) cache.set(result.sourceUrl, result);
+    const results = await withTimeout(
+      scrapeUrls(urls),
+      cycleBudget(urls.length),
+      "scrape cycle",
+    );
+
+    for (const result of results) {
+      if (result.error) {
+        recordFailure(result.sourceUrl, result.error);
+      } else {
+        recordSuccess(result.sourceUrl, result.listings);
+      }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[scheduler] cycle failed: ${message}`);
+
+    // Abandon this cycle: nothing that comes back from it can be trusted, and
+    // the browser it was using is presumed wedged. Restarting is what lets the
+    // next tick make progress instead of inheriting the same stuck Chrome.
+    for (const url of urls) recordFailure(url, message);
+    await forceRestart().catch(() => {});
     broadcast({ type: "error", message });
   } finally {
     running = false;
   }
 
-  for (const [ws, subscribed] of subscriptions) deliver(ws, subscribed);
+  deliverAll();
 
   if (rerunRequested) {
     rerunRequested = false;
@@ -103,7 +168,7 @@ export function subscribe(ws: WebSocket, urls: string[]): void {
   // only if some URL is genuinely new to us.
   deliver(ws, urls);
 
-  if (urls.some((url) => !cache.has(url))) {
+  if (urls.some((url) => !targets.has(url))) {
     void runCycle();
   }
 }

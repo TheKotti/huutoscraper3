@@ -29,11 +29,9 @@ export const toriParser: SiteParser = {
   },
 
   async parse(page: Page): Promise<Listing[]> {
-    try {
-      await page.waitForSelector("article.sf-search-ad", { timeout: 10000 });
-    } catch {
-      return [];
-    }
+    // A selector timeout is treated as a failure rather than a silent empty
+    // result — see the huuto parser for why. Left uncaught so it propagates.
+    await page.waitForSelector("article.sf-search-ad", { timeout: 10000 });
 
     const raw = await page.evaluate(() => {
       const articles = document.querySelectorAll<HTMLElement>("article.sf-search-ad");
