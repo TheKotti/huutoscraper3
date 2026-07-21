@@ -3,9 +3,10 @@ import { useWebSocket } from "./hooks/useWebSocket";
 import { useUrlParams } from "./hooks/useUrlParams";
 import { UrlForm } from "./components/UrlForm";
 import { JobList } from "./components/JobList";
-import { KeywordInput } from "./components/KeywordInput";
+import { WordListInput } from "./components/WordListInput";
 import { ListingTable } from "./components/ListingTable";
 import { TargetStatusLine } from "./components/TargetStatusLine";
+import { parseTerms, matchesAny } from "./matching";
 import type { Listing } from "./types";
 
 // huuto.net doesn't publish listing times, so its parser stamps every listing
@@ -17,17 +18,11 @@ function hasSyntheticTime(sourceUrl: string): boolean {
 
 export function App() {
   const { connected, scraping, results, error, subscribe } = useWebSocket();
-  const { urls, keywords, addUrl, removeUrl, setKeywords } = useUrlParams();
+  const { urls, keywords, hidden, addUrl, removeUrl, setKeywords, setHidden } =
+    useUrlParams();
 
-  // "silent hill, deus ex" -> ["silent hill", "deus ex"], matched as substrings
-  const keywordTerms = useMemo(
-    () =>
-      keywords
-        .split(",")
-        .map((k) => k.trim().toLowerCase())
-        .filter(Boolean),
-    [keywords],
-  );
+  const keywordTerms = useMemo(() => parseTerms(keywords), [keywords]);
+  const hiddenTerms = useMemo(() => parseTerms(hidden), [hidden]);
 
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [newUrls, setNewUrls] = useState<Set<string>>(new Set());
@@ -108,7 +103,16 @@ export function App() {
         <section className="controls">
           <UrlForm onAdd={addUrl} />
           <JobList urls={urls} onRemove={removeUrl} />
-          <KeywordInput value={keywords} onChange={setKeywords} />
+          <WordListInput
+            value={keywords}
+            onChange={setKeywords}
+            placeholder="Highlight keywords, comma separated (e.g. silent hill, deus ex)"
+          />
+          <WordListInput
+            value={hidden}
+            onChange={setHidden}
+            placeholder="Hide listings containing, comma separated (e.g. rikki, viallinen)"
+          />
         </section>
       )}
 
@@ -117,6 +121,16 @@ export function App() {
       <section className="listings">
         {urls.map((sourceUrl) => {
           const group = allListings.filter((l) => l.sourceUrl === sourceUrl);
+          // Filtered for display only, never removed from allListings, so
+          // clearing a hidden word brings its listings straight back.
+          const visible = group.filter((l) => {
+            const title = l.title.toLowerCase();
+            // A highlight keyword rescues a listing a hidden word would drop
+            return (
+              !matchesAny(title, hiddenTerms) || matchesAny(title, keywordTerms)
+            );
+          });
+          const hiddenCount = group.length - visible.length;
           const status = results.find((r) => r.sourceUrl === sourceUrl);
           return (
             <div key={sourceUrl} className="listing-group">
@@ -124,13 +138,19 @@ export function App() {
                 <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
                   {new URL(sourceUrl).hostname}
                 </a>
-                <span className="listing-count">{group.length}</span>
+                <span className="listing-count">{visible.length}</span>
+                {hiddenCount > 0 && (
+                  <span className="listing-hidden-count">
+                    {hiddenCount} hidden
+                  </span>
+                )}
               </h2>
               <TargetStatusLine status={status} />
               <ListingTable
-                listings={group}
+                listings={visible}
                 newUrls={newUrls}
                 keywords={keywordTerms}
+                hiddenCount={hiddenCount}
               />
             </div>
           );

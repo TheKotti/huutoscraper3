@@ -149,11 +149,11 @@ header h1 {
   background: #3a1a1a;
 }
 
-.keyword-input {
+.word-list-input {
   margin-top: 1rem;
 }
 
-.keyword-input input {
+.word-list-input input {
   width: 100%;
   padding: 0.6rem 0.8rem;
   background: #1c2028;
@@ -163,7 +163,7 @@ header h1 {
   font-size: 0.9rem;
 }
 
-.keyword-input input:focus {
+.word-list-input input:focus {
   outline: none;
   border-color: #58a6ff;
 }
@@ -213,6 +213,13 @@ header h1 {
   font-size: 0.8rem;
   color: #8b949e;
   font-weight: 400;
+}
+
+.listing-hidden-count {
+  font-size: 0.75rem;
+  color: #6e7681;
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 .target-status {
