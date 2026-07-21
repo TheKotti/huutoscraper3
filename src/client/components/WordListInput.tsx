@@ -1,16 +1,17 @@
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  placeholder: string;
 }
 
-export function KeywordInput({ value, onChange }: Props) {
+export function WordListInput({ value, onChange, placeholder }: Props) {
   return (
-    <div className="keyword-input">
+    <div className="word-list-input">
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Highlight keywords, comma separated (e.g. silent hill, deus ex)"
+        placeholder={placeholder}
       />
     </div>
   );

@@ -1,16 +1,25 @@
+import { matchesAny } from "../matching";
 import type { Listing } from "../types";
 
 interface Props {
   listings: Listing[];
   newUrls: Set<string>;
   keywords: string[];
+  hiddenCount: number;
 }
 
-export function ListingTable({ listings, newUrls, keywords }: Props) {
+export function ListingTable({
+  listings,
+  newUrls,
+  keywords,
+  hiddenCount,
+}: Props) {
   if (listings.length === 0) {
     return (
       <p className="empty">
-        No listings yet. Add a URL and wait for the first scrape.
+        {hiddenCount > 0
+          ? `All ${hiddenCount} listings hidden by your filter.`
+          : "No listings yet. Add a URL and wait for the first scrape."}
       </p>
     );
   }
@@ -27,8 +36,7 @@ export function ListingTable({ listings, newUrls, keywords }: Props) {
         </thead>
         <tbody>
           {listings.map((listing) => {
-            const title = listing.title.toLowerCase();
-            const matched = keywords.some((k) => title.includes(k));
+            const matched = matchesAny(listing.title.toLowerCase(), keywords);
 
             return (
               <tr
