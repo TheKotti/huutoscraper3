@@ -6,10 +6,12 @@ export interface Listing {
   sourceUrl: string;
 }
 
-export interface ScrapeResult {
+export interface TargetStatus {
   sourceUrl: string;
   listings: Listing[];
-  error?: string;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  lastError: string | null;
 }
 
 export type ClientMessage = {
@@ -19,5 +21,5 @@ export type ClientMessage = {
 
 export type ServerMessage =
   | { type: "scrape_start" }
-  | { type: "scrape_result"; results: ScrapeResult[] }
+  | { type: "scrape_result"; results: TargetStatus[] }
   | { type: "error"; message: string };

@@ -1,6 +1,7 @@
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import type { Browser, Page } from "puppeteer-core";
+import { withTimeout } from "./timeout.js";
 
 puppeteer.use(StealthPlugin());
 
@@ -70,6 +71,28 @@ export async function shutdown(): Promise<void> {
     await browser.close();
     browser = null;
     console.log("Browser closed");
+  }
+}
+
+/**
+ * Tear Chrome down without trusting it to cooperate.
+ *
+ * Used when a scrape cycle had to be abandoned: the browser is assumed wedged,
+ * so a graceful close may hang too. Detaching the singleton first means the next
+ * cycle launches a fresh browser regardless of how long the old one takes to die.
+ */
+export async function forceRestart(): Promise<void> {
+  const wedged = browser;
+  browser = null;
+  if (!wedged) return;
+
+  const proc = wedged.process();
+  try {
+    await withTimeout(wedged.close(), 5_000, "browser.close");
+    console.log("[browser] closed after abandoned cycle");
+  } catch {
+    proc?.kill("SIGKILL");
+    console.log("[browser] SIGKILLed after abandoned cycle");
   }
 }
 
