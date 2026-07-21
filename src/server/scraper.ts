@@ -25,7 +25,7 @@ export async function scrapeUrls(urls: string[]): Promise<ScrapeResult[]> {
       }
 
       try {
-        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30000 });
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
         await new Promise((r) => setTimeout(r, 3000));
         const listings = await parser.parse(page);
         console.log(`[scrape] ${url} => ${listings.length} listings`);

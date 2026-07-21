@@ -40,6 +40,11 @@ export async function getBrowser(): Promise<Browser> {
   return browser;
 }
 
+// The parsers only read text and class names, so images, styling and fonts are
+// pure overhead. Blocking them cuts most of the bytes and memory per scrape.
+// Scripts stay enabled so Cloudflare challenges can still resolve.
+const BLOCKED_RESOURCES = new Set(["image", "media", "font", "stylesheet"]);
+
 export async function createPage(): Promise<Page> {
   const b = await getBrowser();
   const page = await b.newPage();
@@ -47,6 +52,16 @@ export async function createPage(): Promise<Page> {
   await page.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
   );
+
+  await page.setRequestInterception(true);
+  page.on("request", (req) => {
+    if (BLOCKED_RESOURCES.has(req.resourceType())) {
+      req.abort().catch(() => {});
+    } else {
+      req.continue().catch(() => {});
+    }
+  });
+
   return page;
 }
 
