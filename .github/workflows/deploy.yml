@@ -63,8 +63,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            echo "${{ secrets.GHCR_PULL_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_PULL_USER }} --password-stdin
-            IMAGE=ghcr.io/${{ github.repository }}:latest
+            IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]'):latest
             docker pull "$IMAGE"
             docker stop huutoscraper3 || true
             docker rm huutoscraper3 || true
