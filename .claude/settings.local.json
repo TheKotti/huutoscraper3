@@ -3,7 +3,8 @@
     "allow": [
       "PowerShell(npm init -y)",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(npx tsc *)"
     ]
   }
 }

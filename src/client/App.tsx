@@ -8,6 +8,13 @@ import type { Listing } from "./types";
 
 const SCRAPE_INTERVAL_MS = 60_000;
 
+// huuto.net doesn't publish listing times, so its parser stamps every listing
+// with the scrape time. Freeze the first value we saw for those, or rescrapes
+// keep bumping it forward. tori.fi reports real times, so let those refresh.
+function hasSyntheticTime(sourceUrl: string): boolean {
+  return sourceUrl.includes("huuto.net");
+}
+
 export function App() {
   const { connected, scraping, results, error, scrape } = useWebSocket();
   const { urls, addUrl, removeUrl } = useUrlParams();
@@ -39,7 +46,13 @@ export function App() {
       if (!knownUrlsRef.current.has(l.url)) {
         freshUrls.add(l.url);
       }
-      merged.set(l.url, l);
+      const previous = merged.get(l.url);
+      merged.set(
+        l.url,
+        previous && hasSyntheticTime(l.sourceUrl)
+          ? { ...l, listingTime: previous.listingTime }
+          : l,
+      );
       knownUrlsRef.current.add(l.url);
     }
 
