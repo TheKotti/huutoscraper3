@@ -13,7 +13,7 @@ export interface ScrapeResult {
 }
 
 export type ClientMessage = {
-  type: "scrape";
+  type: "subscribe";
   urls: string[];
 };
 

@@ -7,8 +7,6 @@ import { KeywordInput } from "./components/KeywordInput";
 import { ListingTable } from "./components/ListingTable";
 import type { Listing } from "./types";
 
-const SCRAPE_INTERVAL_MS = 60_000;
-
 // huuto.net doesn't publish listing times, so its parser stamps every listing
 // with the scrape time. Freeze the first value we saw for those, or rescrapes
 // keep bumping it forward. tori.fi reports real times, so let those refresh.
@@ -17,7 +15,7 @@ function hasSyntheticTime(sourceUrl: string): boolean {
 }
 
 export function App() {
-  const { connected, scraping, results, error, scrape } = useWebSocket();
+  const { connected, scraping, results, error, subscribe } = useWebSocket();
   const { urls, keywords, addUrl, removeUrl, setKeywords } = useUrlParams();
 
   // "silent hill, deus ex" -> ["silent hill", "deus ex"], matched as substrings
@@ -80,14 +78,12 @@ export function App() {
     }
   }, [results]);
 
-  // Trigger scrape on interval and when URLs change
+  // Declare interest and let the server drive the schedule. Running a timer
+  // here meant every open tab cost a full extra scrape cycle.
   useEffect(() => {
-    if (!connected || urls.length === 0) return;
-
-    scrape(urls);
-    const timer = setInterval(() => scrape(urls), SCRAPE_INTERVAL_MS);
-    return () => clearInterval(timer);
-  }, [connected, urls, scrape]);
+    if (!connected) return;
+    subscribe(urls);
+  }, [connected, urls, subscribe]);
 
   const [compact, setCompact] = useState(false);
 

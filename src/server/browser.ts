@@ -17,7 +17,7 @@ const CHROME_ARGS = [
   "--disable-sync",
   "--disable-translate",
   "--no-first-run",
-  "--window-size=1920,1080",
+  "--window-size=1280,800",
 ];
 
 export async function getBrowser(): Promise<Browser> {
@@ -48,7 +48,7 @@ const BLOCKED_RESOURCES = new Set(["image", "media", "font", "stylesheet"]);
 export async function createPage(): Promise<Page> {
   const b = await getBrowser();
   const page = await b.newPage();
-  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setViewport({ width: 1280, height: 800 });
   await page.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
   );

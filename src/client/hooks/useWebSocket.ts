@@ -60,11 +60,11 @@ export function useWebSocket() {
     };
   }, []);
 
-  const scrape = useCallback((urls: string[]) => {
+  const subscribe = useCallback((urls: string[]) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "scrape", urls } satisfies ClientMessage));
+      wsRef.current.send(JSON.stringify({ type: "subscribe", urls } satisfies ClientMessage));
     }
   }, []);
 
-  return { ...state, scrape };
+  return { ...state, subscribe };
 }

@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import type { Server } from "http";
 import type { ClientMessage, ServerMessage } from "./types.js";
-import { scrapeUrls } from "./scraper.js";
+import { subscribe, unsubscribe } from "./scheduler.js";
 
 function send(ws: WebSocket, msg: ServerMessage): void {
   if (ws.readyState === WebSocket.OPEN) {
@@ -15,7 +15,7 @@ export function setupWebSocket(server: Server): void {
   wss.on("connection", (ws) => {
     console.log("Client connected");
 
-    ws.on("message", async (raw) => {
+    ws.on("message", (raw) => {
       let msg: ClientMessage;
       try {
         msg = JSON.parse(raw.toString());
@@ -24,24 +24,17 @@ export function setupWebSocket(server: Server): void {
         return;
       }
 
-      if (msg.type === "scrape") {
-        if (!msg.urls?.length) {
-          send(ws, { type: "error", message: "No URLs provided" });
+      if (msg.type === "subscribe") {
+        if (!Array.isArray(msg.urls)) {
+          send(ws, { type: "error", message: "urls must be an array" });
           return;
         }
-
-        send(ws, { type: "scrape_start" });
-
-        try {
-          const results = await scrapeUrls(msg.urls);
-          send(ws, { type: "scrape_result", results });
-        } catch (err) {
-          send(ws, { type: "error", message: err instanceof Error ? err.message : String(err) });
-        }
+        subscribe(ws, msg.urls);
       }
     });
 
     ws.on("close", () => {
+      unsubscribe(ws);
       console.log("Client disconnected");
     });
   });

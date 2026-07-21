@@ -11,9 +11,10 @@ export interface ScrapeResult {
   error?: string;
 }
 
-// Client → Server
+// Client → Server. Clients declare which URLs they care about; the server owns
+// the scrape schedule, so a client never asks for a scrape directly.
 export type ClientMessage = {
-  type: "scrape";
+  type: "subscribe";
   urls: string[];
 };
 

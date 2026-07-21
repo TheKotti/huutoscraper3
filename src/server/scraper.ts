@@ -25,8 +25,10 @@ export async function scrapeUrls(urls: string[]): Promise<ScrapeResult[]> {
       }
 
       try {
+        // No settle delay here on purpose: every parser waits for its own
+        // listing selector, so a fixed sleep only buys the page more time to
+        // run scripts we don't need.
         await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-        await new Promise((r) => setTimeout(r, 3000));
         const listings = await parser.parse(page);
         console.log(`[scrape] ${url} => ${listings.length} listings`);
         results.push({ sourceUrl: url, listings });
