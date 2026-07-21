@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useUrlParams } from "./hooks/useUrlParams";
 import { UrlForm } from "./components/UrlForm";
 import { JobList } from "./components/JobList";
+import { KeywordInput } from "./components/KeywordInput";
 import { ListingTable } from "./components/ListingTable";
 import type { Listing } from "./types";
 
@@ -17,7 +18,17 @@ function hasSyntheticTime(sourceUrl: string): boolean {
 
 export function App() {
   const { connected, scraping, results, error, scrape } = useWebSocket();
-  const { urls, addUrl, removeUrl } = useUrlParams();
+  const { urls, keywords, addUrl, removeUrl, setKeywords } = useUrlParams();
+
+  // "silent hill, deus ex" -> ["silent hill", "deus ex"], matched as substrings
+  const keywordTerms = useMemo(
+    () =>
+      keywords
+        .split(",")
+        .map((k) => k.trim().toLowerCase())
+        .filter(Boolean),
+    [keywords],
+  );
 
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [newUrls, setNewUrls] = useState<Set<string>>(new Set());
@@ -100,6 +111,7 @@ export function App() {
         <section className="controls">
           <UrlForm onAdd={addUrl} />
           <JobList urls={urls} onRemove={removeUrl} />
+          <KeywordInput value={keywords} onChange={setKeywords} />
         </section>
       )}
 
@@ -116,7 +128,11 @@ export function App() {
                 </a>
                 <span className="listing-count">{group.length}</span>
               </h2>
-              <ListingTable listings={group} newUrls={newUrls} />
+              <ListingTable
+                listings={group}
+                newUrls={newUrls}
+                keywords={keywordTerms}
+              />
             </div>
           );
         })}

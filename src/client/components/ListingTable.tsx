@@ -3,9 +3,10 @@ import type { Listing } from "../types";
 interface Props {
   listings: Listing[];
   newUrls: Set<string>;
+  keywords: string[];
 }
 
-export function ListingTable({ listings, newUrls }: Props) {
+export function ListingTable({ listings, newUrls, keywords }: Props) {
   if (listings.length === 0) {
     return (
       <p className="empty">
@@ -25,22 +26,33 @@ export function ListingTable({ listings, newUrls }: Props) {
           </tr>
         </thead>
         <tbody>
-          {listings.map((listing) => (
-            <tr
-              key={listing.url}
-              className={`listing-row ${newUrls.has(listing.url) ? "new" : ""}`}
-            >
-              <td className="listing-time">
-                {new Date(listing.listingTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </td>
-              <td className="listing-price">{listing.price}</td>
-              <td>
-                <a href={listing.url} target="_blank" rel="noopener noreferrer">
-                  {listing.title}
-                </a>
-              </td>
-            </tr>
-          ))}
+          {listings.map((listing) => {
+            const title = listing.title.toLowerCase();
+            const matched = keywords.some((k) => title.includes(k));
+
+            return (
+              <tr
+                key={listing.url}
+                className={[
+                  "listing-row",
+                  newUrls.has(listing.url) && "new",
+                  matched && "match",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <td className="listing-time">
+                  {new Date(listing.listingTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </td>
+                <td className="listing-price">{listing.price}</td>
+                <td>
+                  <a href={listing.url} target="_blank" rel="noopener noreferrer">
+                    {listing.title}
+                  </a>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
