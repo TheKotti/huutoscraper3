@@ -10,6 +10,11 @@ import { withTimeout } from "./timeout.js";
 
 const SCRAPE_INTERVAL_MS = 60_000;
 
+// Cap retained listings per target. A scrape returns one page's worth, which is
+// already bounded, but this keeps a pathologically large page from pinning a lot
+// of memory on the small host this runs on.
+const MAX_LISTINGS_PER_TARGET = 60;
+
 // One scrape schedule for the whole server, not one per connected client.
 // Every client subscribes to a set of URLs; each tick scrapes the union of
 // those sets exactly once and fans the results back out. Two browser tabs
@@ -63,7 +68,14 @@ function targetFor(url: string): TargetStatus {
 
 function recordSuccess(url: string, listings: TargetStatus["listings"]): void {
   const target = targetFor(url);
-  target.listings = listings;
+  // Newest first, then keep only the cap so an unusually large page can't grow
+  // this target without bound.
+  target.listings = [...listings]
+    .sort(
+      (a, b) =>
+        new Date(b.listingTime).getTime() - new Date(a.listingTime).getTime(),
+    )
+    .slice(0, MAX_LISTINGS_PER_TARGET);
   target.lastSuccessAt = new Date().toISOString();
 }
 
@@ -146,6 +158,16 @@ async function runCycle(): Promise<void> {
   }
 }
 
+// Drop cached results for URLs nobody is watching anymore. Without this the
+// targets map only ever grows: every distinct URL ever subscribed would keep
+// its last page of listings resident for the lifetime of the process.
+function pruneTargets(): void {
+  const active = new Set(activeUrls());
+  for (const url of targets.keys()) {
+    if (!active.has(url)) targets.delete(url);
+  }
+}
+
 // No subscribers means no timer at all — an idle server does no scraping.
 function syncTimer(): void {
   const shouldRun = subscriptions.size > 0 && activeUrls().length > 0;
@@ -162,6 +184,8 @@ function syncTimer(): void {
 
 export function subscribe(ws: WebSocket, urls: string[]): void {
   subscriptions.set(ws, urls);
+  // This may have been the last watcher of some previously-active URL.
+  pruneTargets();
   syncTimer();
 
   // Serve what we already have so a new tab paints immediately, then scrape
@@ -175,5 +199,6 @@ export function subscribe(ws: WebSocket, urls: string[]): void {
 
 export function unsubscribe(ws: WebSocket): void {
   subscriptions.delete(ws);
+  pruneTargets();
   syncTimer();
 }

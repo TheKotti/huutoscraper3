@@ -28,45 +28,44 @@ export function App() {
   const [newUrls, setNewUrls] = useState<Set<string>>(new Set());
   const knownUrlsRef = useRef<Set<string>>(new Set());
 
-  // When results come in, diff against known listings
+  // Each scrape_result carries the server's full current view of every watched
+  // URL, so we rebuild from it rather than accumulating. A listing that has
+  // fallen off its source is simply absent here and drops out of the UI, which
+  // is what keeps outdated listings from piling up.
   useEffect(() => {
     if (results.length === 0) return;
 
-    const incoming: Listing[] = [];
-    for (const r of results) {
-      for (const l of r.listings) {
-        incoming.push({ ...l, sourceUrl: r.sourceUrl });
-      }
-    }
+    // What we currently show, so we can carry forward frozen synthetic times.
+    const previousByUrl = new Map(allListings.map((l) => [l.url, l]));
 
     const freshUrls = new Set<string>();
-    const merged = new Map<string, Listing>();
+    const next: Listing[] = [];
 
-    // Keep existing listings
-    for (const l of allListings) {
-      merged.set(l.url, l);
-    }
-
-    for (const l of incoming) {
-      if (!knownUrlsRef.current.has(l.url)) {
-        freshUrls.add(l.url);
+    for (const r of results) {
+      for (const l of r.listings) {
+        const listing: Listing = { ...l, sourceUrl: r.sourceUrl };
+        if (!knownUrlsRef.current.has(listing.url)) {
+          freshUrls.add(listing.url);
+        }
+        const previous = previousByUrl.get(listing.url);
+        next.push(
+          previous && hasSyntheticTime(listing.sourceUrl)
+            ? { ...listing, listingTime: previous.listingTime }
+            : listing,
+        );
       }
-      const previous = merged.get(l.url);
-      merged.set(
-        l.url,
-        previous && hasSyntheticTime(l.sourceUrl)
-          ? { ...l, listingTime: previous.listingTime }
-          : l,
-      );
-      knownUrlsRef.current.add(l.url);
     }
 
-    const sorted = Array.from(merged.values()).sort(
+    next.sort(
       (a, b) =>
         new Date(b.listingTime).getTime() - new Date(a.listingTime).getTime(),
     );
-    setAllListings(sorted);
+    setAllListings(next);
     setNewUrls(freshUrls);
+
+    // Track only what's currently present so this set can't grow without bound
+    // either. A listing that disappears and later returns counts as new again.
+    knownUrlsRef.current = new Set(next.map((l) => l.url));
 
     // Clear "new" highlight after animation
     if (freshUrls.size > 0) {
